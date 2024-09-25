@@ -1,0 +1,114 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+version: 2.1
+parameters:
+  gradle_version:
+    type: string
+    default: 8.1.1
+  android_api_level:
+    type: string
+    default: "30"
+  android_build_tools_level:
+    type: string
+    default: "33.0.1"
+  emulator_name:
+    type: string
+    default: test
+  tags:
+    type: string
+    default: ""
+  excluded_tags:
+    type: string
+    default: ""
+  network_log:
+    type: string
+    default: ""
+  test_user1:
+    type: string
+    default: ""
+  test_user2:
+    type: string
+    default: ""
+  test_user3:
+    type: string
+    default: ""
+  testrail_flag:
+    type: string
+    default: ""
+  testrail_run_id:
+    type: string
+    default: ""
+  dry_run:
+    type: boolean
+    default: false
+jobs:
+  build:
+    machine:
+      image: ubuntu-2004:202010-01
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: "Build Test Image"
+          command: |
+            docker build \
+            --build-arg ANDROID_API_LEVEL=<< pipeline.parameters.android_api_level >> \
+            --build-arg ANDROID_BUILD_TOOLS_LEVEL=<< pipeline.parameters.android_build_tools_level >> \
+            --build-arg EMULATOR_NAME=<< pipeline.parameters.emulator_name >> \
+            -t android-calculator-tests .
+      - run:
+          name: "Run Tests"
+          command: |
+            set -e
+            if [[ "<< pipeline.parameters.test_user1 >>" != "" ]]
+               then
+                 testusers="-uone << pipeline.parameters.test_user1 >>"
+               else
+                 testusers=""
+            fi
+            if [[ "<< pipeline.parameters.test_user2 >>" != "" ]]
+               then
+                 testusers="$testusers -utwo << pipeline.parameters.test_user2 >>"
+            fi
+            if [[ "<< pipeline.parameters.test_user3 >>" != "" ]]
+               then
+                 testusers="$testusers -uthree << pipeline.parameters.test_user3 >>"
+            fi
+            if [[ "<< pipeline.parameters.tags >>" != "" ]]
+               then
+                 tags="-tags << pipeline.parameters.tags >>"
+               else
+                 tags=""
+            fi
+            if [[ "<< pipeline.parameters.excluded_tags >>" != "" ]]
+               then
+                 extags="-ex << pipeline.parameters.excluded_tags >>"
+               else
+                 extags=""
+            fi
+            if [[ "<< pipeline.parameters.network_log >>" != "" ]]
+               then
+                 net_log="-nl"
+               else
+                 net_log=""
+            fi
+            if [[ "<< pipeline.parameters.testrail_flag >>" != "" ]]
+               then
+                 testrail="-tr"
+               else
+                 testrail=""
+            fi
+            if [[ "<< pipeline.parameters.testrail_run_id >>" != "" ]]
+                then
+                  testrail_run="-tri << pipeline.parameters.testrail_run_id >>"
+                else
+                  testrail_run=""
+            fi
+            docker run --privileged -it --rm -v $PWD:/data android-calculator-tests bash -c ". /start.sh && gradlew build -p /data"
+            docker run -v $(pwd)/output:/output android-calculator-tests 
+            ls output
+      - store_artifacts:
+          path: output
+          
